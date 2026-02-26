@@ -3,6 +3,7 @@ package com.arsc.bookchaingateway.trace.controller;
 import com.arsc.bookchaingateway.trace.dto.ApiResponse;
 import com.arsc.bookchaingateway.trace.dto.BookDTO;
 import com.arsc.bookchaingateway.trace.service.FabricGatewayService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 public class BookController {
 
     private static final Logger logger = LoggerFactory.getLogger(BookController.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     private FabricGatewayService fabricGatewayService;
@@ -21,11 +23,11 @@ public class BookController {
      * 1. 初始上链 (Create)
      */
     @PostMapping
-    public ApiResponse<String> createBook(@RequestBody BookDTO bookDTO) {
+    public ApiResponse<Object> createBook(@RequestBody BookDTO bookDTO) {
         logger.debug("收到图书上链请求: id={}, name={}, publisher={}, location={}", 
                 bookDTO.getId(), bookDTO.getName(), bookDTO.getPublisher(), bookDTO.getLocation());
         try {
-            String result = fabricGatewayService.createBook(
+            String resultStr = fabricGatewayService.createBook(
                     bookDTO.getId(),
                     bookDTO.getName(),
                     bookDTO.getPublisher(),
@@ -33,6 +35,7 @@ public class BookController {
                     bookDTO.getOperator(),
                     bookDTO.getOperatorRole()
             );
+            Object result = objectMapper.readValue(resultStr, Object.class);
             logger.info("图书上链成功: id={}", bookDTO.getId());
             return ApiResponse.success(result);
         } catch (Exception e) {
@@ -45,10 +48,11 @@ public class BookController {
      * 2. 查询最新状态 (Read)
      */
     @GetMapping("/{id}")
-    public ApiResponse<String> getBook(@PathVariable("id") String id) {
+    public ApiResponse<Object> getBook(@PathVariable("id") String id) {
         logger.debug("收到图书查询请求: id={}", id);
         try {
-            String result = fabricGatewayService.queryBook(id);
+            String resultStr = fabricGatewayService.queryBook(id);
+            Object result = objectMapper.readValue(resultStr, Object.class);
             logger.info("图书查询成功: id={}", id);
             return ApiResponse.success(result);
         } catch (Exception e) {
@@ -61,19 +65,20 @@ public class BookController {
      * 3. 流转更新 (Update)
      */
     @PutMapping("/{id}")
-    public ApiResponse<String> updateBook(@PathVariable("id") String id,
+    public ApiResponse<Object> updateBook(@PathVariable("id") String id,
                                              @RequestBody BookDTO bookDTO) {
         logger.debug("收到图书更新请求: id={}, location={}, status={}", 
                 id, bookDTO.getLocation(), bookDTO.getStatus());
         try {
             // 从 DTO 中提取前端想要更新的字段
-            String result = fabricGatewayService.updateBookLocation(
+            String resultStr = fabricGatewayService.updateBookLocation(
                     id,
                     bookDTO.getLocation(),
                     bookDTO.getStatus(),
                     bookDTO.getOperator(),
                     bookDTO.getOperatorRole()
             );
+            Object result = objectMapper.readValue(resultStr, Object.class);
             logger.info("图书更新成功: id={}", id);
             return ApiResponse.success(result);
         } catch (Exception e) {
@@ -86,7 +91,7 @@ public class BookController {
      * 4. 状态删除 (Delete)
      */
     @DeleteMapping("/{id}")
-    public ApiResponse<String> deleteBook(@PathVariable("id") String id) {
+    public ApiResponse<Object> deleteBook(@PathVariable("id") String id) {
         logger.debug("收到图书删除请求: id={}", id);
         try {
             String result = fabricGatewayService.deleteBook(id);
@@ -102,10 +107,11 @@ public class BookController {
      * 5. 查询历史轨迹 (Read Sub-resource)
      */
     @GetMapping("/{id}/history")
-    public ApiResponse<String> getBookHistory(@PathVariable("id") String id) {
+    public ApiResponse<Object> getBookHistory(@PathVariable("id") String id) {
         logger.debug("收到图书历史查询请求: id={}", id);
         try {
-            String result = fabricGatewayService.getBookHistory(id);
+            String resultStr = fabricGatewayService.getBookHistory(id);
+            Object result = objectMapper.readValue(resultStr, Object.class);
             logger.info("图书历史查询成功: id={}", id);
             return ApiResponse.success(result);
         } catch (Exception e) {

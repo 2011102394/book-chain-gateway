@@ -122,7 +122,7 @@ public class FabricGatewayService {
         logger.debug("正在向区块链提交更新交易: bookId={}, newLocation={}, newStatus={},operator={}, operatorRole={}",
                 bookId, newLocation, newStatus, operator, operatorRole);
         // submitTransaction 用于写入/修改操作，会自动处理节点背书和排序流程
-        byte[] result = contract.submitTransaction("updateBookLocation", bookId, newLocation, newStatus);
+        byte[] result = contract.submitTransaction("updateBookLocation", bookId, newLocation, newStatus, operator, operatorRole);
         String resultStr = new String(result, StandardCharsets.UTF_8);
         logger.info("图书更新交易成功: bookId={}", bookId);
         return resultStr;
