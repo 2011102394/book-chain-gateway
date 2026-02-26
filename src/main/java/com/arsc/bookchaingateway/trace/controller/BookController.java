@@ -29,7 +29,9 @@ public class BookController {
                     bookDTO.getId(),
                     bookDTO.getName(),
                     bookDTO.getPublisher(),
-                    bookDTO.getLocation()
+                    bookDTO.getLocation(),
+                    bookDTO.getOperator(),
+                    bookDTO.getOperatorRole()
             );
             logger.info("图书上链成功: id={}", bookDTO.getId());
             return ApiResponse.success(result);
@@ -68,7 +70,9 @@ public class BookController {
             String result = fabricGatewayService.updateBookLocation(
                     id,
                     bookDTO.getLocation(),
-                    bookDTO.getStatus()
+                    bookDTO.getStatus(),
+                    bookDTO.getOperator(),
+                    bookDTO.getOperatorRole()
             );
             logger.info("图书更新成功: id={}", id);
             return ApiResponse.success(result);

@@ -94,12 +94,13 @@ public class FabricGatewayService {
     /**
      * 调用智能合约将新图书上链 (初始录入)
      */
-    public String createBook(String bookId, String bookName, String publisher, String currentLocation) throws Exception {
-        logger.debug("正在向区块链提交【图书上链】交易: bookId={}, bookName={}, publisher={}, location={}", 
-                bookId, bookName, publisher, currentLocation);
+    public String createBook(String bookId, String bookName, String publisher, String currentLocation,
+                             String operator, String operatorRole) throws Exception {
+        logger.debug("正在向区块链提交【图书上链】交易: bookId={}, bookName={}, publisher={}, location={},operator={}, operatorRole={}",
+                bookId, bookName, publisher, currentLocation, operator, operatorRole);
         // submitTransaction 提交写入操作，参数顺序必须和智能合约里的 createBook 方法参数一致
-        byte[] result = contract.submitTransaction("createBook", bookId, bookName, publisher, currentLocation);
-        String resultStr = new String(result, StandardCharsets.UTF_8);
+        byte[] result = contract.submitTransaction("createBook", bookId, bookName, publisher, currentLocation, operator, operatorRole);
+        String resultStr =  new String(result, StandardCharsets.UTF_8);
         logger.info("图书上链交易成功: bookId={}", bookId);
         return resultStr;
     }
@@ -116,9 +117,10 @@ public class FabricGatewayService {
     /**
      * 调用智能合约更新图书位置 (写入账本，需要全网共识)
      */
-    public String updateBookLocation(String bookId, String newLocation, String newStatus) throws Exception {
-        logger.debug("正在向区块链提交更新交易: bookId={}, newLocation={}, newStatus={}", 
-                bookId, newLocation, newStatus);
+    public String updateBookLocation(String bookId, String newLocation, String newStatus,
+                                     String operator, String operatorRole) throws Exception {
+        logger.debug("正在向区块链提交更新交易: bookId={}, newLocation={}, newStatus={},operator={}, operatorRole={}",
+                bookId, newLocation, newStatus, operator, operatorRole);
         // submitTransaction 用于写入/修改操作，会自动处理节点背书和排序流程
         byte[] result = contract.submitTransaction("updateBookLocation", bookId, newLocation, newStatus);
         String resultStr = new String(result, StandardCharsets.UTF_8);

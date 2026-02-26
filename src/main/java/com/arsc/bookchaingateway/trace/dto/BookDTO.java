@@ -7,6 +7,8 @@ public class BookDTO {
     private String publisher;
     private String location;
     private String status;
+    private String operator;
+    private String operatorRole;
 
     // --- Getter 和 Setter ---
 
@@ -24,4 +26,20 @@ public class BookDTO {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getOperator() {
+        return operator;
+    }
+
+    public void setOperator(String operator) {
+        this.operator = operator;
+    }
+
+    public String getOperatorRole() {
+        return operatorRole;
+    }
+
+    public void setOperatorRole(String operatorRole) {
+        this.operatorRole = operatorRole;
+    }
 }
