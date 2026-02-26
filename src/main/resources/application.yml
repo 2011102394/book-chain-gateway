@@ -1,2 +1,12 @@
 server:
   port: 8080
+
+# 应用配置
+spring:
+  # 日志配置（使用logback-spring.xml进行详细配置）
+  logging:
+    # 日志级别
+    level:
+      root: info
+      com.arsc.bookchaingateway: debug
+

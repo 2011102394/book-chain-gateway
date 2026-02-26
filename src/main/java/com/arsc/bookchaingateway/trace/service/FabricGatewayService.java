@@ -12,6 +12,8 @@ import org.hyperledger.fabric.client.identity.Identity;
 import org.hyperledger.fabric.client.identity.Signer;
 import org.hyperledger.fabric.client.identity.Signers;
 import org.hyperledger.fabric.client.identity.X509Identity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.hyperledger.fabric.client.ChaincodeEvent;
@@ -27,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 public class FabricGatewayService {
+
+    private static final Logger logger = LoggerFactory.getLogger(FabricGatewayService.class);
 
     // 基础配置
     private static final String MSP_ID = "Org1MSP";
@@ -44,7 +48,7 @@ public class FabricGatewayService {
 
     @PostConstruct
     public void init() throws Exception {
-        System.out.println("⏳ 正在初始化 Fabric 网关连接...");
+        logger.info("正在初始化 Fabric 网关连接...");
 
         // 1. 从 resources/network 读取证书和私钥流
         InputStream tlsCertStream = new ClassPathResource("network/tls-ca.crt").getInputStream();
@@ -82,7 +86,7 @@ public class FabricGatewayService {
         network = gateway.getNetwork(CHANNEL_NAME);
         contract = network.getContract(CHAINCODE_NAME);
 
-        System.out.println("✅ 成功连接到 Fabric 区块链网络！金库大门已打开！");
+        logger.info("成功连接到 Fabric 区块链网络！");
         // 启动事件监听线程
         startEventListener();
     }
@@ -91,15 +95,19 @@ public class FabricGatewayService {
      * 调用智能合约将新图书上链 (初始录入)
      */
     public String createBook(String bookId, String bookName, String publisher, String currentLocation) throws Exception {
-        System.out.println("🚀 正在向区块链提交【图书上链】交易...");
+        logger.debug("正在向区块链提交【图书上链】交易: bookId={}, bookName={}, publisher={}, location={}", 
+                bookId, bookName, publisher, currentLocation);
         // submitTransaction 提交写入操作，参数顺序必须和智能合约里的 createBook 方法参数一致
         byte[] result = contract.submitTransaction("createBook", bookId, bookName, publisher, currentLocation);
-        return new String(result, StandardCharsets.UTF_8);
+        String resultStr = new String(result, StandardCharsets.UTF_8);
+        logger.info("图书上链交易成功: bookId={}", bookId);
+        return resultStr;
     }
     /**
      * 调用智能合约查询图书 (只读，速度快)
      */
     public String queryBook(String bookId) throws Exception {
+        logger.debug("正在查询图书信息: bookId={}", bookId);
         // evaluateTransaction 用于查询操作，不产生新区块
         byte[] result = contract.evaluateTransaction("queryBook", bookId);
         return new String(result, StandardCharsets.UTF_8);
@@ -109,17 +117,20 @@ public class FabricGatewayService {
      * 调用智能合约更新图书位置 (写入账本，需要全网共识)
      */
     public String updateBookLocation(String bookId, String newLocation, String newStatus) throws Exception {
-        System.out.println("🚀 正在向区块链提交交易...");
+        logger.debug("正在向区块链提交更新交易: bookId={}, newLocation={}, newStatus={}", 
+                bookId, newLocation, newStatus);
         // submitTransaction 用于写入/修改操作，会自动处理节点背书和排序流程
         byte[] result = contract.submitTransaction("updateBookLocation", bookId, newLocation, newStatus);
-        return new String(result, StandardCharsets.UTF_8);
+        String resultStr = new String(result, StandardCharsets.UTF_8);
+        logger.info("图书更新交易成功: bookId={}", bookId);
+        return resultStr;
     }
 
     /**
      * 调用智能合约获取图书完整的流转轨迹
      */
     public String getBookHistory(String bookId) throws Exception {
-        System.out.println("🔍 正在向区块链查询历史溯源数据...");
+        logger.debug("正在查询图书历史溯源数据: bookId={}", bookId);
         byte[] result = contract.evaluateTransaction("getBookHistory", bookId);
         return new String(result, StandardCharsets.UTF_8);
     }
@@ -128,17 +139,19 @@ public class FabricGatewayService {
      * 调用智能合约删除图书
      */
     public String deleteBook(String bookId) throws Exception {
-        System.out.println("🗑️ 正在向区块链提交删除交易...");
+        logger.debug("正在向区块链提交删除交易: bookId={}", bookId);
         // submitTransaction 提交删除操作
         contract.submitTransaction("deleteBook", bookId);
-        return "图书 [" + bookId + "] 已成功从当前账本状态中删除！";
+        String result = "图书 [" + bookId + "] 已成功从当前账本状态中删除！";
+        logger.info("图书删除交易成功: bookId={}", bookId);
+        return result;
     }
 
     /**
      * 启动区块链事件监听器 (后台独立线程)
      */
     private void startEventListener() {
-        System.out.println("🎧 正在启动区块链全局事件监听器...");
+        logger.info("正在启动区块链全局事件监听器...");
 
         // 开启一个新线程，防止阻塞主程序的启动
         new Thread(() -> {
@@ -146,7 +159,7 @@ public class FabricGatewayService {
                 // 获取当前智能合约产生的所有事件流
                 CloseableIterator<ChaincodeEvent> eventIter = network.getChaincodeEvents(CHAINCODE_NAME);
 
-                System.out.println("📡 监听器已就绪，正在等待区块链网络广播...");
+                logger.info("监听器已就绪，正在等待区块链网络广播...");
 
                 // 死循环持续监听
                 while (eventIter.hasNext()) {
@@ -154,12 +167,8 @@ public class FabricGatewayService {
                     String eventName = event.getEventName();
                     String payload = new String(event.getPayload(), StandardCharsets.UTF_8);
 
-                    System.out.println("\n========================================");
-                    System.out.println("🔔 [区块链实时广播] 捕获到账本变更事件!");
-                    System.out.println("👉 事件类型: " + eventName);
-                    System.out.println("👉 交易 ID: " + event.getTransactionId());
-                    System.out.println("👉 业务数据: " + payload);
-                    System.out.println("========================================\n");
+                    logger.info("[区块链实时广播] 捕获到账本变更事件! 事件类型: {}, 交易 ID: {}, 业务数据: {}", 
+                            eventName, event.getTransactionId(), payload);
 
                     // 💡 架构拓展提示：
                     // 在正式环境里，你可以写一个 switch(eventName) 分支：
@@ -167,7 +176,7 @@ public class FabricGatewayService {
                     // 如果是 BookDeletedEvent -> 调用 MySQL 的 delete，并发邮件通知管理员
                 }
             } catch (Exception e) {
-                System.err.println("❌ 事件监听器异常: " + e.getMessage());
+                logger.error("事件监听器异常: {}", e.getMessage(), e);
             }
         }).start();
     }
