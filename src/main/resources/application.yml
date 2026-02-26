@@ -1,12 +1,37 @@
 server:
   port: 8080
 
-# 应用配置
 spring:
-  # 日志配置（使用logback-spring.xml进行详细配置）
+  application:
+    name: book-chain-gateway
   logging:
-    # 日志级别
     level:
       root: info
       com.arsc.bookchaingateway: debug
 
+fabric:
+  channel-name: mychannel
+  chaincode-name: booktrace
+  timeout-seconds: 30
+  organizations:
+    org1:
+      msp-id: Org1MSP
+      peer-endpoint: localhost:7051
+      override-auth: peer0.org1.example.com
+      tls-cert: network/org1/tls-ca.crt
+      user-cert: network/org1/user-cert.pem
+      user-key: network/org1/user-key.pem
+    org2:
+      msp-id: Org2MSP
+      peer-endpoint: localhost:9051
+      override-auth: peer0.org2.example.com
+      tls-cert: network/org2/tls-ca.crt
+      user-cert: network/org2/user-cert.pem
+      user-key: network/org2/user-key.pem
+    org3:
+      msp-id: Org3MSP
+      peer-endpoint: localhost:11051
+      override-auth: peer0.org3.example.com
+      tls-cert: network/org3/tls-ca.crt
+      user-cert: network/org3/user-cert.pem
+      user-key: network/org3/user-key.pem
