@@ -1,6 +1,8 @@
 package com.arsc.bookchaingateway.trace.service;
 
 import com.arsc.bookchaingateway.trace.config.FabricProperties;
+import com.arsc.bookchaingateway.trace.dto.BookDTO;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
@@ -18,7 +20,10 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -27,11 +32,16 @@ public class FabricGatewayService {
 
     private static final Logger logger = LoggerFactory.getLogger(FabricGatewayService.class);
 
+    // 日期格式化，用于转 String 传给合约
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
     private final FabricProperties fabricProperties;
+    private final ObjectMapper objectMapper; // Spring Boot 自动注入
     private final Map<String, Contract> contractMap = new HashMap<>();
 
-    public FabricGatewayService(FabricProperties fabricProperties) {
+    public FabricGatewayService(FabricProperties fabricProperties, ObjectMapper objectMapper) {
         this.fabricProperties = fabricProperties;
+        this.objectMapper = objectMapper;
     }
 
     @PostConstruct
@@ -74,13 +84,19 @@ public class FabricGatewayService {
         Signer signer = Signers.newPrivateKeySigner(privateKey);
 
         int timeout = fabricProperties.getTimeoutSeconds();
+        // 建议设大一点，防止批量上链超时
+        if (timeout < 30) timeout = 30;
+
+        int finalTimeout = timeout;
+        int finalTimeout1 = timeout;
+        int finalTimeout2 = timeout;
         Gateway gateway = Gateway.newInstance()
                 .identity(identity)
                 .signer(signer)
                 .connection(channel)
-                .evaluateOptions(options -> options.withDeadlineAfter(timeout, TimeUnit.SECONDS))
-                .endorseOptions(options -> options.withDeadlineAfter(timeout, TimeUnit.SECONDS))
-                .submitOptions(options -> options.withDeadlineAfter(timeout, TimeUnit.SECONDS))
+                .evaluateOptions(options -> options.withDeadlineAfter(finalTimeout, TimeUnit.SECONDS))
+                .endorseOptions(options -> options.withDeadlineAfter(finalTimeout1, TimeUnit.SECONDS))
+                .submitOptions(options -> options.withDeadlineAfter(finalTimeout2, TimeUnit.SECONDS))
                 .connect();
 
         Network network = gateway.getNetwork(fabricProperties.getChannelName());
@@ -103,12 +119,46 @@ public class FabricGatewayService {
         return contract;
     }
 
-    public String createBook(String orgId, String bookId, String bookName, String publisher,
-                             String currentLocation, String operator, String operatorRole) throws Exception {
-        logger.debug("[{}] 发起【图书上链】交易: bookId={}, bookName={}, operator={}", orgId, bookId, bookName, operator);
-        byte[] result = getContract(orgId).submitTransaction("createBook", bookId, bookName, publisher, currentLocation, operator, operatorRole);
+    /**
+     * 1. 单本上链 (Updated)
+     */
+    public String createBook(String orgId, String bookId, String bookName,
+                             String isbn, String author, Date publishDate, // 🌟 新增参数
+                             String publisher, String currentLocation,
+                             String operator, String operatorRole) throws Exception {
+        logger.debug("[{}] 发起【图书上链】交易: bookId={}, isbn={}", orgId, bookId, isbn);
+
+        String dateStr = (publishDate != null) ? dateFormat.format(publishDate) : dateFormat.format(new Date());
+
+        // 参数顺序必须严格对应合约 createBook
+        byte[] result = getContract(orgId).submitTransaction("createBook",
+                bookId,
+                bookName,
+                isbn,
+                author,
+                dateStr,
+                publisher,
+                currentLocation,
+                operator,
+                operatorRole
+        );
         String resultStr = new String(result, StandardCharsets.UTF_8);
         logger.info("[{}] 图书上链交易成功: bookId={}", orgId, bookId);
+        return resultStr;
+    }
+
+    /**
+     * 🌟 新增：批量上链
+     */
+    public String batchCreateBooks(String orgId, List<BookDTO> bookList) throws Exception {
+        logger.info("[{}] 发起【批量上链】交易，共 {} 本书", orgId, bookList.size());
+
+        // 将 List 转为 JSON 字符串
+        String jsonPayload = objectMapper.writeValueAsString(bookList);
+
+        byte[] result = getContract(orgId).submitTransaction("batchCreateBooks", jsonPayload);
+        String resultStr = new String(result, StandardCharsets.UTF_8);
+        logger.info("[{}] 批量上链成功: {}", orgId, resultStr);
         return resultStr;
     }
 
