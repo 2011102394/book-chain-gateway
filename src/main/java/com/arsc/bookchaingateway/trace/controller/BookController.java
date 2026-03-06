@@ -34,8 +34,7 @@ public class BookController {
     @Operation(summary = "单本图书上链", description = "将一本新书的元数据录入区块链账本。需要指定操作机构身份 (orgId)。")
     @PostMapping
     public ApiResponse<Object> createBook(
-            @Parameter(description = "图书信息DTO", required = true)
-            @RequestBody BookDTO bookDTO) {
+            @Parameter(description = "图书信息DTO", required = true) @RequestBody BookDTO bookDTO) {
 
         String orgId = bookDTO.getOrgId() != null ? bookDTO.getOrgId() : "ORG1";
         logger.debug("[{}] 收到图书上链请求: id={}, name={}", orgId, bookDTO.getId(), bookDTO.getName());
@@ -50,8 +49,7 @@ public class BookController {
                     bookDTO.getPublisher(),
                     bookDTO.getLocation(),
                     bookDTO.getOperator(),
-                    bookDTO.getOperatorRole()
-            );
+                    bookDTO.getOperatorRole());
             Object result = objectMapper.readValue(resultStr, Object.class);
             logger.info("[{}] 图书上链成功: id={}", orgId, bookDTO.getId());
             return ApiResponse.success(result);
@@ -67,8 +65,7 @@ public class BookController {
     @Operation(summary = "批量图书上链", description = "原子性地将一批图书录入区块链。如果其中任何一本ID重复，整批操作将失败。")
     @PostMapping("/batch")
     public ApiResponse<Object> batchCreateBooks(
-            @Parameter(description = "图书列表DTO", required = true)
-            @RequestBody List<BookDTO> bookList) {
+            @Parameter(description = "图书列表DTO", required = true) @RequestBody List<BookDTO> bookList) {
 
         if (bookList == null || bookList.isEmpty()) {
             return ApiResponse.error("批量数据不能为空");
@@ -92,11 +89,9 @@ public class BookController {
     @Operation(summary = "查询图书详情", description = "根据图书ID查询当前最新的账本状态。")
     @GetMapping("/{id}")
     public ApiResponse<Object> getBook(
-            @Parameter(description = "图书唯一ID", example = "ISBN-001")
-            @PathVariable("id") String id,
+            @Parameter(description = "图书唯一ID", example = "ISBN-001") @PathVariable("id") String id,
 
-            @Parameter(description = "查询发起方机构ID", example = "ORG1")
-            @RequestParam(value = "orgId", defaultValue = "ORG1") String orgId) {
+            @Parameter(description = "查询发起方机构ID", example = "ORG1") @RequestParam(value = "orgId", defaultValue = "ORG1") String orgId) {
 
         logger.debug("[{}] 收到图书查询请求: id={}", orgId, id);
         try {
@@ -116,11 +111,9 @@ public class BookController {
     @Operation(summary = "更新图书流转状态", description = "更新图书的当前位置、状态及操作人信息，形成流转记录。")
     @PutMapping("/{id}")
     public ApiResponse<Object> updateBook(
-            @Parameter(description = "图书唯一ID", example = "ISBN-001")
-            @PathVariable("id") String id,
+            @Parameter(description = "图书唯一ID", example = "ISBN-001") @PathVariable("id") String id,
 
-            @Parameter(description = "包含位置和状态更新信息的DTO", required = true)
-            @RequestBody BookDTO bookDTO) {
+            @Parameter(description = "包含位置和状态更新信息的DTO", required = true) @RequestBody BookDTO bookDTO) {
 
         String orgId = bookDTO.getOrgId() != null ? bookDTO.getOrgId() : "ORG1";
         logger.debug("[{}] 收到图书更新请求: id={}, location={}, status={}",
@@ -132,8 +125,7 @@ public class BookController {
                     bookDTO.getLocation(),
                     bookDTO.getStatus(),
                     bookDTO.getOperator(),
-                    bookDTO.getOperatorRole()
-            );
+                    bookDTO.getOperatorRole());
             Object result = objectMapper.readValue(resultStr, Object.class);
             logger.info("[{}] 图书更新成功: id={}", orgId, id);
             return ApiResponse.success(result);
@@ -144,16 +136,38 @@ public class BookController {
     }
 
     /**
+     * 7. 批量流转更新 (Batch Update)
+     */
+    @Operation(summary = "批量更新图书流转状态", description = "原子性地更新多本图书的当前位置、状态及操作人信息，形成批量流转记录。只有当整批包含的所有的图书全都有效时才会成功。")
+    @PutMapping("/batch")
+    public ApiResponse<Object> batchUpdateBooks(
+            @Parameter(description = "包含更新信息的图书列表DTO（列表中的元素需要指定 bookId 以及要更新的信息）", required = true) @RequestBody List<BookDTO> bookList) {
+
+        if (bookList == null || bookList.isEmpty()) {
+            return ApiResponse.error("批量更新数据不能为空");
+        }
+        String orgId = bookList.get(0).getOrgId() != null ? bookList.get(0).getOrgId() : "ORG1";
+
+        logger.info("[{}] 收到批量流转更新请求，数量: {}", orgId, bookList.size());
+
+        try {
+            String resultStr = fabricGatewayService.batchUpdateBookLocation(orgId, bookList);
+            return ApiResponse.success(resultStr);
+        } catch (Exception e) {
+            logger.error("[{}] 批量流转更新失败: {}", orgId, e.getMessage());
+            return ApiResponse.error("批量更流转新失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 4. 状态删除 (Delete)
      */
     @Operation(summary = "删除图书状态", description = "从世界状态中删除图书（标记删除），但历史溯源记录依然保留。")
     @DeleteMapping("/{id}")
     public ApiResponse<Object> deleteBook(
-            @Parameter(description = "图书唯一ID", example = "ISBN-001")
-            @PathVariable("id") String id,
+            @Parameter(description = "图书唯一ID", example = "ISBN-001") @PathVariable("id") String id,
 
-            @Parameter(description = "删除发起方机构ID", example = "ORG1")
-            @RequestParam(value = "orgId", defaultValue = "ORG1") String orgId) {
+            @Parameter(description = "删除发起方机构ID", example = "ORG1") @RequestParam(value = "orgId", defaultValue = "ORG1") String orgId) {
 
         logger.debug("[{}] 收到图书删除请求: id={}", orgId, id);
         try {
@@ -172,11 +186,9 @@ public class BookController {
     @Operation(summary = "查询历史溯源轨迹", description = "获取该图书从创建至今的所有流转历史记录（包含时间戳、交易ID）。")
     @GetMapping("/{id}/history")
     public ApiResponse<Object> getBookHistory(
-            @Parameter(description = "图书唯一ID", example = "ISBN-001")
-            @PathVariable("id") String id,
+            @Parameter(description = "图书唯一ID", example = "ISBN-001") @PathVariable("id") String id,
 
-            @Parameter(description = "查询发起方机构ID", example = "ORG1")
-            @RequestParam(value = "orgId", defaultValue = "ORG1") String orgId) {
+            @Parameter(description = "查询发起方机构ID", example = "ORG1") @RequestParam(value = "orgId", defaultValue = "ORG1") String orgId) {
 
         logger.debug("[{}] 收到图书历史查询请求: id={}", orgId, id);
         try {

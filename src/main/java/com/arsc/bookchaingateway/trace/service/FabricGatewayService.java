@@ -73,7 +73,7 @@ public class FabricGatewayService {
         Reader keyReader = new InputStreamReader(userKeyStream, StandardCharsets.UTF_8);
 
         ManagedChannel channel = Grpc.newChannelBuilder(orgConfig.getPeerEndpoint(),
-                        TlsChannelCredentials.newBuilder().trustManager(tlsCertStream).build())
+                TlsChannelCredentials.newBuilder().trustManager(tlsCertStream).build())
                 .overrideAuthority(orgConfig.getOverrideAuth())
                 .build();
 
@@ -85,7 +85,8 @@ public class FabricGatewayService {
 
         int timeout = fabricProperties.getTimeoutSeconds();
         // 建议设大一点，防止批量上链超时
-        if (timeout < 30) timeout = 30;
+        if (timeout < 30)
+            timeout = 30;
 
         int finalTimeout = timeout;
         int finalTimeout1 = timeout;
@@ -123,9 +124,9 @@ public class FabricGatewayService {
      * 1. 单本上链 (Updated)
      */
     public String createBook(String orgId, String bookId, String bookName,
-                             String isbn, String author, Date publishDate, // 🌟 新增参数
-                             String publisher, String currentLocation,
-                             String operator, String operatorRole) throws Exception {
+            String isbn, String author, Date publishDate, // 🌟 新增参数
+            String publisher, String currentLocation,
+            String operator, String operatorRole) throws Exception {
         logger.debug("[{}] 发起【图书上链】交易: bookId={}, isbn={}", orgId, bookId, isbn);
 
         String dateStr = (publishDate != null) ? dateFormat.format(publishDate) : dateFormat.format(new Date());
@@ -140,8 +141,7 @@ public class FabricGatewayService {
                 publisher,
                 currentLocation,
                 operator,
-                operatorRole
-        );
+                operatorRole);
         String resultStr = new String(result, StandardCharsets.UTF_8);
         logger.info("[{}] 图书上链交易成功: bookId={}", orgId, bookId);
         return resultStr;
@@ -169,11 +169,27 @@ public class FabricGatewayService {
     }
 
     public String updateBookLocation(String orgId, String bookId, String newLocation, String newStatus,
-                                     String operator, String operatorRole) throws Exception {
+            String operator, String operatorRole) throws Exception {
         logger.debug("[{}] 发起【图书流转】交易: bookId={}, newLocation={}, operator={}", orgId, bookId, newLocation, operator);
-        byte[] result = getContract(orgId).submitTransaction("updateBookLocation", bookId, newLocation, newStatus, operator, operatorRole);
+        byte[] result = getContract(orgId).submitTransaction("updateBookLocation", bookId, newLocation, newStatus,
+                operator, operatorRole);
         String resultStr = new String(result, StandardCharsets.UTF_8);
         logger.info("[{}] 图书流转交易成功: bookId={}", orgId, bookId);
+        return resultStr;
+    }
+
+    /**
+     * 🌟 新增：批量更新图书位置与流转状态
+     */
+    public String batchUpdateBookLocation(String orgId, List<BookDTO> bookList) throws Exception {
+        logger.info("[{}] 发起【批量流转更新】交易，共 {} 本书", orgId, bookList.size());
+
+        // 将 List 转为 JSON 字符串，以匹配智能合约中期待的 JSON Array 参数
+        String jsonPayload = objectMapper.writeValueAsString(bookList);
+
+        byte[] result = getContract(orgId).submitTransaction("batchUpdateBookLocation", jsonPayload);
+        String resultStr = new String(result, StandardCharsets.UTF_8);
+        logger.info("[{}] 批量流转更新成功: {}", orgId, resultStr);
         return resultStr;
     }
 
@@ -195,7 +211,8 @@ public class FabricGatewayService {
         logger.info("正在启动区块链全局事件监听器...");
         new Thread(() -> {
             try {
-                CloseableIterator<ChaincodeEvent> eventIter = network.getChaincodeEvents(fabricProperties.getChaincodeName());
+                CloseableIterator<ChaincodeEvent> eventIter = network
+                        .getChaincodeEvents(fabricProperties.getChaincodeName());
                 logger.info("监听器已就绪，正在等待区块链网络广播...");
                 while (eventIter.hasNext()) {
                     ChaincodeEvent event = eventIter.next();
