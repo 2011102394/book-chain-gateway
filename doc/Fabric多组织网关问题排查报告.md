@@ -14,17 +14,147 @@
 
 ---
 
-## 2. 环境信息
+## 2. 区块链网络环境信息
+
+### 2.1 服务器与安装信息
 
 | 项目 | 详情 |
 |------|------|
+| 操作系统 | Linux (amd64) |
 | Fabric 版本 | v2.5.11 |
-| 组织数量 | 3 个（Org1MSP、Org2MSP、Org3MSP） |
-| 通道 | mychannel |
-| 链码 | booktrace（版本 8.0，Java 链码） |
-| 网关 SDK | fabric-gateway 1.4.0 |
-| 后端框架 | Spring Boot 3.5.11 + Java 17 |
-| 区块高度 | 三个组织均为 110（已同步） |
+| Go 版本 | go1.23.5 |
+| 安装目录 | `/home/zcj/fabric/fabric-samples/test-network` |
+| 二进制工具目录 | `/home/zcj/fabric/fabric-samples/bin` |
+| 网络模板 | fabric-samples/test-network（ORG3 为手动添加） |
+| 部署方式 | Docker Compose |
+
+### 2.2 节点信息
+
+| 节点类型 | 节点名称 | 容器端口 | 映射端口 | MSP ID |
+|---------|---------|---------|---------|--------|
+| Orderer | orderer.example.com | 7050 | 0.0.0.0:7050 | OrdererMSP |
+| Peer | peer0.org1.example.com | 7051 | 0.0.0.0:7051 | Org1MSP |
+| Peer | peer0.org2.example.com | 9051 | 0.0.0.0:9051 | Org2MSP |
+| Peer | peer0.org3.example.com | 11051 | 0.0.0.0:11051 | Org3MSP |
+
+**说明：** ORG1 和 ORG2 由 test-network 脚本默认创建，ORG3 通过 `addOrg3` 目录下的脚本手动添加。
+
+### 2.3 通道与链码
+
+| 项目 | 详情 |
+|------|------|
+| 通道名称 | mychannel |
+| 链码名称 | booktrace |
+| 链码版本 | 8.0 |
+| 链码序列号 | 10（最终修复后的序列号） |
+| 链码类型 | Java 链码（fabric-contract-java） |
+| 链码包 ID | `booktrace_8.0:ef138b320e7af71f7406e670b5aaece88519249823cb387acb7b4fad726b319c` |
+| 背书策略（修复后） | `OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')` |
+| 链码源码目录 | `E:\文化产业课题项目\code\book-chaincode` |
+
+### 2.4 证书目录结构
+
+```
+test-network/organizations/
+├── ordererOrganizations/
+│   └── example.com/
+│       ├── msp/
+│       └── tlsca/
+│           └── tlsca.example.com-cert.pem          # Orderer TLS CA 证书
+└── peerOrganizations/
+    ├── org1.example.com/
+    │   ├── msp/
+    │   ├── tlsca/
+    │   │   └── tlsca.org1.example.com-cert.pem     # ORG1 TLS CA 证书
+    │   └── users/
+    │       └── Admin@org1.example.com/
+    │           └── msp/
+    │               ├── signcerts/
+    │               │   └── Admin@org1.example.com-cert.pem   # ORG1 Admin 证书
+    │               └── keystore/
+    │                   └── priv_sk                            # ORG1 Admin 私钥
+    ├── org2.example.com/   （结构同上）
+    └── org3.example.com/   （结构同上）
+```
+
+### 2.5 网关项目证书映射
+
+| 组织 | 网关项目路径 | 对应 Fabric 网络路径 |
+|------|-------------|-------------------|
+| ORG1 TLS CA | `network/org1/tls-ca.crt` | `organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem` |
+| ORG1 用户证书 | `network/org1/user-cert.pem` | `organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/signcerts/Admin@org1.example.com-cert.pem` |
+| ORG1 用户私钥 | `network/org1/user-key.pem` | `organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/priv_sk` |
+| ORG2 TLS CA | `network/org2/tls-ca.crt` | `organizations/peerOrganizations/org2.example.com/tlsca/tlsca.org2.example.com-cert.pem` |
+| ORG2 用户证书 | `network/org2/user-cert.pem` | `organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp/signcerts/Admin@org2.example.com-cert.pem` |
+| ORG2 用户私钥 | `network/org2/user-key.pem` | `organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp/keystore/priv_sk` |
+| ORG3 TLS CA | `network/org3/tls-ca.crt` | `organizations/peerOrganizations/org3.example.com/tlsca/tlsca.org3.example.com-cert.pem` |
+| ORG3 用户证书 | `network/org3/user-cert.pem` | `organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp/signcerts/Admin@org3.example.com-cert.pem` |
+| ORG3 用户私钥 | `network/org3/user-key.pem` | `organizations/peerOrganizations/org3.example.com/users/Admin@org3.example.com/msp/keystore/priv_sk` |
+
+### 2.6 Docker 镜像版本
+
+| 镜像 | 版本 | 用途 |
+|------|------|------|
+| hyperledger/fabric-peer | 2.5.11 | Peer 节点 |
+| hyperledger/fabric-orderer | 2.5.11 | 排序节点 |
+| hyperledger/fabric-tools | 2.5.11 | CLI 工具 |
+| hyperledger/fabric-ccenv | 2.5.11 | 链码构建环境 |
+| hyperledger/fabric-javaenv | 2.5 | Java 链码构建环境 |
+
+### 2.7 应用配置（application.yml）
+
+| 配置项 | 值 |
+|-------|---|
+| 服务端口 | 8080 |
+| 通道名称 | mychannel |
+| 链码名称 | booktrace |
+| 超时时间 | 30 秒 |
+| ORG1 MSP ID | Org1MSP |
+| ORG1 Peer 地址 | localhost:7051 |
+| ORG1 Override Auth | peer0.org1.example.com |
+| ORG2 MSP ID | Org2MSP |
+| ORG2 Peer 地址 | localhost:9051 |
+| ORG2 Override Auth | peer0.org2.example.com |
+| ORG3 MSP ID | Org3MSP |
+| ORG3 Peer 地址 | localhost:11051 |
+| ORG3 Override Auth | peer0.org3.example.com |
+
+### 2.8 常用运维命令速查
+
+```bash
+# 设置环境变量（每次打开新终端需重新设置）
+cd ~/fabric/fabric-samples/test-network
+export PATH=${PWD}/../bin:$PATH
+export CORE_PEER_TLS_ENABLED=true
+
+# 切换组织环境变量（以下以 ORG1 为例）
+export CORE_PEER_LOCALMSPID="Org1MSP"
+export CORE_PEER_ADDRESS=localhost:7051
+export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/tlsca/tlsca.org1.example.com-cert.pem
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+
+# 查看区块高度
+peer channel getinfo -c mychannel
+
+# 查看已安装的链码
+peer lifecycle chaincode queryinstalled
+
+# 查看已提交的链码定义
+peer lifecycle chaincode querycommitted -c mychannel --name booktrace
+
+# 查看链码容器状态
+docker ps | grep booktrace
+
+# 查看 Peer 日志
+docker logs peer0.org2.example.com --tail 50
+
+# 解码证书信息
+openssl x509 -in user-cert.pem -noout -subject
+
+# 拉取通道最新配置
+peer channel fetch config config_block.pb -c mychannel -o localhost:7050 --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem
+configtxlator proto_decode --input config_block.pb --type common.Block > config.json
+```
 
 ---
 
